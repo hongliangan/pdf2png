@@ -1,0 +1,68 @@
+appId: com.ahti.pdf2png
+productName: PDF2PNG Editor
+copyright: Copyright © 2026 pdf2png contributors
+directories:
+  output: dist
+  buildResources: build
+files:
+  - dist-electron/**/*
+  - package.json
+  - "!**/.DS_Store"
+  - "!**/*.map"
+asar: true
+# sharp's prebuilt .node file uses mmap which doesn't work through asar
+# on Windows. Unpack it (and any other native modules) so require() can
+# find the .node on disk at runtime.
+asarUnpack:
+  - "**/node_modules/sharp/**"
+  - "**/node_modules/@img/**"
+  - "**/node_modules/sharp-lib/**"
+  - "**/*.node"
+# Next's standalone `server.js` does `process.chdir(__dirname)` then reads
+# `./.next/...` and `./public/...` relative to that. We must therefore place
+# the entire standalone directory at the same path inside the packaged app
+# (`<appDir>/.next/standalone`). electron-builder 25.x prefixes `extraResources`
+# with `app/` for relative `to` paths, so this is what we want.
+extraResources:
+  - from: .next/standalone
+    to: .next/standalone
+  - from: public
+    to: .next/standalone/public
+# We pre-pinned sharp's prebuilt ABI for Electron's Node version via
+# `npm install --platform=win32 --arch=x64 --runtime=electron --target=…`.
+# Don't let electron-builder auto-rebuild it.
+npmRebuild: false
+electronLanguages:
+  - en
+  - zh-CN
+win:
+  # The path to a 256x256 multi-res .ico. We ship a placeholder in
+  # build/icon.ico; replace with a real icon before release.
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  artifactName: ${productName}-${version}-${arch}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: PDF2PNG Editor
+  deleteAppDataOnUninstall: true
+  language: "2052"
+# Only ship Windows targets for now — even on a Windows runner electron-builder
+# would otherwise also pack the default macOS DMG. Empty list skips macOS.
+mac:
+  target: []
+  category: public.app-category.graphics-design
+linux:
+  target: []
+  category: Graphics
+extraMetadata:
+  main: dist-electron/main.js

@@ -1,0 +1,92 @@
+name: build-windows
+
+# Build the pdf2png Windows installer + portable .exe on every push to main
+# and on manual dispatch. Artifacts are uploaded to the workflow run so you
+# can download them straight from the Actions tab.
+#
+# This is the only place we run `build:win` — it needs `npm run pin:sharp:win`
+# to download the Windows-x64 prebuilt sharp, which can't be done on macOS.
+
+on:
+  push:
+    branches: [main]
+    # Don't run twice when a release tag is pushed (we'll add a release job
+    # in a follow-up if/when we publish).
+    tags-ignore: ['*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Windows installer (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        # We do a plain `npm install` (not `npm ci`) because we need the
+        # postinstall hook to copy pdf.worker into public/ and we want npm
+        # to materialize optional native deps for the host platform.
+        run: npm install
+
+      - name: Pin sharp for win32-x64 + Electron
+        # Required for sharp to load on the target Windows machine without
+        # any extra install step. See scripts/pin-sharp-windows.mjs.
+        run: npm run pin:sharp:win
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test -- --reporter=dot
+
+      - name: Compile Electron sources
+        run: npm run build:electron
+
+      - name: Build Windows installer (NSIS + portable)
+        env:
+          # Skip electron-builder's automatic code signing — we don't have a
+          # cert in CI. The artifact will be unsigned and trigger SmartScreen
+          # on first launch, which is the expected v1 behavior.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run build:win
+
+      - name: Verify artifacts exist
+        shell: bash
+        run: |
+          set -e
+          echo "--- dist contents ---"
+          ls -la dist/ | head -20
+          echo
+          echo "--- expected artifacts ---"
+          for f in 'PDF2PNG Editor-0.1.0-x64.exe' 'PDF2PNG Editor-0.1.0-portable.exe'; do
+            if [ -f "dist/$f" ]; then
+              echo "OK: dist/$f ($(du -h "dist/$f" | cut -f1))"
+            else
+              echo "MISSING: dist/$f"
+              exit 1
+            fi
+          done
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf2png-windows-x64
+          path: |
+            dist/PDF2PNG Editor-0.1.0-x64.exe
+            dist/PDF2PNG Editor-0.1.0-portable.exe
+          if-no-files-found: error
+          retention-days: 14
