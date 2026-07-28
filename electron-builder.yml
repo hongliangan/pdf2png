@@ -49,14 +49,14 @@ win:
     - target: nsis
       arch:
         - x64
+      # artifactName must live INSIDE each target's block — `${target}` is
+      # only bound at this level, not at the top-level `win.artifactName`.
+      # Putting it there yields "macro target is not defined" at expansion.
+      artifactName: ${productName}-${version}-${arch}-${target}.${ext}
     - target: portable
       arch:
         - x64
-  # Include ${target} so the NSIS installer and the portable single-file
-  # build don't fight over the same output path. Without this, both
-  # targets emit `PDF2PNG Editor-0.1.0-x64.exe` and the portable one
-  # silently overwrites (or gets skipped because the path is occupied).
-  artifactName: ${productName}-${version}-${arch}-${target}.${ext}
+      artifactName: ${productName}-${version}-${arch}-${target}.${ext}
 nsis:
   oneClick: false
   perMachine: false
