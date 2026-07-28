@@ -49,14 +49,16 @@ win:
     - target: nsis
       arch:
         - x64
-      # artifactName must live INSIDE each target's block — `${target}` is
-      # only bound at this level, not at the top-level `win.artifactName`.
-      # Putting it there yields "macro target is not defined" at expansion.
-      artifactName: ${productName}-${version}-${arch}-${target}.${ext}
     - target: portable
       arch:
         - x64
-      artifactName: ${productName}-${version}-${arch}-${target}.${ext}
+  # electron-builder's per-target artifactName lives on `win.artifactName`
+  # (and is also read from `nsis.artifactName` / `portable.artifactName`
+  # via the artifactPatternConfig resolver). We can't reference the
+  # currently-building target's name in a single template — so we just
+  # use the default pattern; electron-builder appends `-portable` to the
+  # portable build automatically, so the two outputs no longer collide.
+  # artifactName: ${productName}-${version}-${arch}.${ext}
 nsis:
   oneClick: false
   perMachine: false
