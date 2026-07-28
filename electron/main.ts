@@ -70,9 +70,19 @@ async function startServer(port: number): Promise<ChildProcess> {
   // meant dev:electron accidentally ran the production build (no HMR) as soon
   // as `next build` had been run for any reason.
   const fs = await import('node:fs');
+  // Packaged app layout (electron-builder extraResources):
+  //   <resourcesPath>/.next/standalone/server.js     ← production
+  //   <resourcesPath>/.next/standalone/.next/...
+  //   <resourcesPath>/.next/standalone/public/...
+  // `process.resourcesPath` resolves correctly on all platforms and is the
+  // canonical way to locate bundled assets from the Electron main process.
+  // Dev mode falls back to `<projectRoot>/.next/standalone/server.js` so
+  // `forceStandalone=1` still works during local prod testing.
+  const appRoot = app.isPackaged
+    ? process.resourcesPath
+    : path.join(__dirname, '..');
   const standaloneServer = path.join(
-    __dirname,
-    '..',
+    appRoot,
     '.next',
     'standalone',
     'server.js',
@@ -88,11 +98,23 @@ async function startServer(port: number): Promise<ChildProcess> {
     args = [standaloneServer];
     cwd = path.dirname(standaloneServer);
   } else {
-    // `npx next dev` for the dev:electron workflow, `npx next start` if the
-    // user has a build but no standalone copy yet.
-    cmd = 'npx';
-    args = ['next', isDev ? 'dev' : 'start', '-p', String(port)];
-    cwd = path.join(__dirname, '..');
+    // `next dev` / `next start` — use the project's local bin (no `npx`
+    // dependency, which is missing from PATH on packaged Windows). Both dev
+    // and a non-standalone prod start land here.
+    const nextBin = path.join(
+      appRoot,
+      'node_modules',
+      '.bin',
+      process.platform === 'win32' ? 'next.cmd' : 'next',
+    );
+    if (fs.existsSync(nextBin)) {
+      cmd = nextBin;
+      args = [isDev ? 'dev' : 'start', '-p', String(port)];
+    } else {
+      cmd = 'npx';
+      args = ['next', isDev ? 'dev' : 'start', '-p', String(port)];
+    }
+    cwd = appRoot;
   }
 
   const child = spawn(cmd, args, {
