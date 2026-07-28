@@ -1,4 +1,10 @@
 appId: com.ahti.pdf2png
+# We don't publish releases through electron-builder — the workflow only
+# uploads the .exe files as a GitHub Actions artifact. Disabling `publish`
+# stops electron-builder from asking for a GitHub Personal Access Token
+# (which it requires whenever it detects a CI environment, even when no
+# release is intended).
+publish: null
 productName: PDF2PNG Editor
 copyright: Copyright © 2026 pdf2png contributors
 directories:

@@ -62,6 +62,11 @@ jobs:
           # cert in CI. The artifact will be unsigned and trigger SmartScreen
           # on first launch, which is the expected v1 behavior.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          # electron-builder 25 asks for a GitHub PAT whenever it detects
+          # a CI environment, even when we're only producing a local
+          # artifact. Belt-and-suspenders alongside `publish: null` in
+          # electron-builder.yml.
+          GH_TOKEN: ''
         run: npm run build:win
 
       - name: Verify artifacts exist
