@@ -39,6 +39,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Read version from package.json
+        id: meta
+        # electron-builder hardcodes "${productName} Setup ${version}.${ext}"
+        # and "${productName} ${version}.${ext}" for the NSIS + portable
+        # artifacts. Reading the version here keeps the verify / upload /
+        # release steps in sync with whatever is currently in package.json.
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -79,6 +88,8 @@ jobs:
         run: npm run build:win
 
       - name: Verify artifacts exist
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
         shell: bash
         run: |
           set -e
@@ -90,7 +101,7 @@ jobs:
           # (see NsisTarget.js:99). The portable one is
           # "${productName} ${version}.${ext}", the NSIS one is
           # "${productName} Setup ${version}.${ext}".
-          for f in 'PDF2PNG Editor 0.1.0.exe' 'PDF2PNG Editor Setup 0.1.0.exe'; do
+          for f in "PDF2PNG Editor ${VERSION}.exe" "PDF2PNG Editor Setup ${VERSION}.exe"; do
             if [ -f "dist/$f" ]; then
               echo "OK: dist/$f ($(du -h "dist/$f" | cut -f1))"
             else
@@ -104,8 +115,8 @@ jobs:
         with:
           name: pdf2png-windows-x64
           path: |
-            dist/PDF2PNG Editor 0.1.0.exe
-            dist/PDF2PNG Editor Setup 0.1.0.exe
+            dist/PDF2PNG Editor ${{ steps.meta.outputs.version }}.exe
+            dist/PDF2PNG Editor Setup ${{ steps.meta.outputs.version }}.exe
           if-no-files-found: error
           retention-days: 14
 
@@ -125,6 +136,14 @@ jobs:
     timeout-minutes: 5
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version from package.json
+        id: meta
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
       - name: Download Windows artifacts
         uses: actions/download-artifact@v4
         with:
@@ -138,8 +157,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/PDF2PNG Editor 0.1.0.exe
-            artifacts/PDF2PNG Editor Setup 0.1.0.exe
+            artifacts/PDF2PNG Editor ${{ steps.meta.outputs.version }}.exe
+            artifacts/PDF2PNG Editor Setup ${{ steps.meta.outputs.version }}.exe
           # softprops defaults `fail_on_unmatched_files: false` — if
           # the glob doesn't match anything it silently creates the
           # release with no assets. Set to true so a path mismatch
@@ -158,8 +177,8 @@ jobs:
 
             Windows 10/11 桌面应用（无需 Node，无需 npm）。
 
-            - **PDF2PNG Editor Setup 0.1.0.exe** — NSIS 安装器（写注册表、桌面快捷方式、开始菜单）
-            - **PDF2PNG Editor 0.1.0.exe** — 绿色单文件（双击即跑，不留痕迹）
+            - **PDF2PNG Editor Setup ${{ steps.meta.outputs.version }}.exe** — NSIS 安装器（写注册表、桌面快捷方式、开始菜单）
+            - **PDF2PNG Editor ${{ steps.meta.outputs.version }}.exe** — 绿色单文件（双击即跑，不留痕迹）
 
             首次运行会触发 SmartScreen，点 "更多信息 → 仍要运行"。
 
