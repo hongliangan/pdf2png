@@ -52,13 +52,11 @@ win:
     - target: portable
       arch:
         - x64
-  # electron-builder's per-target artifactName lives on `win.artifactName`
-  # (and is also read from `nsis.artifactName` / `portable.artifactName`
-  # via the artifactPatternConfig resolver). We can't reference the
-  # currently-building target's name in a single template — so we just
-  # use the default pattern; electron-builder appends `-portable` to the
-  # portable build automatically, so the two outputs no longer collide.
-  # artifactName: ${productName}-${version}-${arch}.${ext}
+  # Don't set win.artifactName. electron-builder's NsisTarget hardcodes
+  # the names itself (NsisTarget.js line 99): NSIS = "${productName} Setup
+  # ${version}.${ext}", portable = "${productName} ${version}.${ext}".
+  # Both names already include ${version} and are distinct, so no override
+  # is necessary — the CI workflow matches them verbatim.
 nsis:
   oneClick: false
   perMachine: false

@@ -77,7 +77,11 @@ jobs:
           ls -la dist/ | head -20
           echo
           echo "--- expected artifacts ---"
-          for f in 'PDF2PNG Editor-0.1.0-x64.exe' 'PDF2PNG Editor-0.1.0-x64-portable.exe'; do
+          # electron-builder's NsisTarget hardcodes these two names
+          # (see NsisTarget.js:99). The portable one is "${productName}
+          # ${version}.${ext}", the NSIS one is "${productName} Setup
+          # ${version}.${ext}" — verified against the latest CI run.
+          for f in 'PDF2PNG Editor 0.1.0.exe' 'PDF2PNG Editor Setup 0.1.0.exe'; do
             if [ -f "dist/$f" ]; then
               echo "OK: dist/$f ($(du -h "dist/$f" | cut -f1))"
             else
@@ -91,7 +95,7 @@ jobs:
         with:
           name: pdf2png-windows-x64
           path: |
-            dist/PDF2PNG Editor-0.1.0-x64.exe
-            dist/PDF2PNG Editor-0.1.0-x64-portable.exe
+            dist/PDF2PNG Editor 0.1.0.exe
+            dist/PDF2PNG Editor Setup 0.1.0.exe
           if-no-files-found: error
           retention-days: 14
