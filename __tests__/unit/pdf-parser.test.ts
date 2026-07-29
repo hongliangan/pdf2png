@@ -78,6 +78,20 @@ function setupMock(pages: MockPageOpts[]) {
 }
 
 describe('parsePdf', () => {
+  it('points pdfjs at the public-folder worker so packaged builds can fetch it', async () => {
+    // Regression sentinel: the previous bundler-aware form
+    // (`new URL('pdfjs-dist/...', import.meta.url)`) produced a content-hashed
+    // URL that 404s inside the packaged Electron .exe because the hash is
+    // baked into the client chunk and the matching file doesn't survive
+    // electron-builder's extraResources copy of the nested .next/static dir
+    // on Windows. We must use the hash-free public URL instead.
+    setupMock([{ ops: [] }]);
+
+    (pdfjsLib.GlobalWorkerOptions as { workerSrc: string }).workerSrc = '';
+    await parsePdf(new ArrayBuffer(8));
+    expect(pdfjsLib.GlobalWorkerOptions.workerSrc).toBe('/pdf.worker.min.mjs');
+  });
+
   it('returns page dimensions and an empty paths list when there are no operators', async () => {
     setupMock([{ ops: [] }]);
 

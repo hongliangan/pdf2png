@@ -72,16 +72,17 @@ let workerConfigured = false;
 function ensureWorker() {
   if (workerConfigured) return;
   if (typeof window !== 'undefined') {
-    try {
-      const url = new URL(
-        'pdfjs-dist/build/pdf.worker.min.mjs',
-        import.meta.url,
-      ).toString();
-      (pdfjsLib.GlobalWorkerOptions as { workerSrc: string }).workerSrc = url;
-    } catch {
-      (pdfjsLib.GlobalWorkerOptions as { workerSrc: string }).workerSrc =
-        '/pdf.worker.min.mjs';
-    }
+    // Use the public-folder worker. The file is placed at
+    // public/pdf.worker.min.mjs by scripts/copy-pdf-worker.mjs (postinstall)
+    // and mirrored into .next/standalone/public/ by
+    // scripts/copy-standalone-assets.mjs (build:next:stage). The
+    // electron-builder extraResources config (public → .next/standalone/public)
+    // re-mirrors it into the packaged app, so the URL is stable across dev,
+    // standalone, and packaged builds — unlike `new URL('...', import.meta.url)`
+    // which Turbopack rewrites to a content-hashed path that's fragile under
+    // electron-builder's extraResources copy of nested .next/static/ on Windows.
+    (pdfjsLib.GlobalWorkerOptions as { workerSrc: string }).workerSrc =
+      '/pdf.worker.min.mjs';
     workerConfigured = true;
   }
 }
